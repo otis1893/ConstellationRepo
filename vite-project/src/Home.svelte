@@ -265,7 +265,7 @@
     }
 
     select:hover {
-        background-color: #266789;
+        background-color: #5177b9;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
     }
 
@@ -293,7 +293,6 @@
 
     input[type="range"]:hover {
         background-color: #266789;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
     }
 
     .slider-labels {
