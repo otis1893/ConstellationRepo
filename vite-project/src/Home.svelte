@@ -7,8 +7,13 @@
     let data = [];
     let error = null;
     let constellationCounts = [];
+    let selectedStar = null;
+    let hoveredStar = null;
+    let mouseX = 0;
+    let mouseY = 0;
     let selectedConstellation = writable("");
     let sliderValue = writable(0);
+    let starOutOfRange = writable(false);
 
     const constellationNames = {
         And: "Andromeda",
@@ -131,12 +136,53 @@
         push(`/detail/${id}`);
     }
 
+    function handleStarClick(star) {
+        selectedStar = star;
+        checkStarPosition();
+    }
+
+    function handleMouseOver(event, star) {
+        hoveredStar = star;
+        mouseX = event.pageX;
+        mouseY = event.pageY;
+    }
+
+    function handleMouseMove(event) {
+        mouseX = event.pageX;
+        mouseY = event.pageY;
+    }
+
+    function handleMouseOut() {
+        hoveredStar = null;
+    }
+
+    function checkStarPosition() {
+        const chartSize = 70; // Adjusted chart size to leave padding around edges
+        const position = calculatePosition(selectedStar.ra, selectedStar.dec);
+        if (
+            position.x < 0 ||
+            position.x > chartSize ||
+            position.y < 0 ||
+            position.y > chartSize
+        ) {
+            starOutOfRange.set(true);
+        } else {
+            starOutOfRange.set(false);
+        }
+    }
+
     function sortStarsByMagnitude(stars, targetMagnitude) {
         return stars.sort(
             (a, b) =>
                 Math.abs(a.mag - targetMagnitude) -
                 Math.abs(b.mag - targetMagnitude),
         );
+    }
+
+    function calculatePosition(ra, dec) {
+        const x = (ra / 24) * 70 + 5; // Adding 5 units padding
+        const y = ((dec + 90) * 70) / 180 + 5; // Adding 5 units padding
+        return { x, y };
     }
 
     $: filteredStars =
@@ -155,7 +201,7 @@
     );
 </script>
 
-<main>
+<main on:mousemove={handleMouseMove}>
     {#if error}
         <p class="error">{error}</p>
     {:else if data.length > 0}
@@ -191,21 +237,64 @@
                     <span>4</span>
                 </div>
             </div>
+            <div class="star-chart-container">
+                <svg class="star-chart" viewBox="0 0 80 80">
+                    {#each sortedStars as star}
+                        <circle
+                            cx={calculatePosition(star.ra, star.dec).x}
+                            cy={calculatePosition(star.ra, star.dec).y}
+                            r="0.5"
+                            fill={selectedStar && selectedStar.id === star.id
+                                ? "yellow"
+                                : "white"}
+                            on:click={() => handleStarClick(star)}
+                            on:mouseover={(event) =>
+                                handleMouseOver(event, star)}
+                            on:mouseout={handleMouseOut}
+                        />
+                    {/each}
+                </svg>
+                {#if $starOutOfRange}
+                    <p class="out-of-range">
+                        The selected star is out of the current view range.
+                    </p>
+                {/if}
+            </div>
             <ul>
                 {#each sortedStars.slice(0, 1000) as star (star.id)}
                     <li>
-                        <button
-                            on:click={() => handleButtonClick(star.id)}
-                            id={"button-" + star.id}
+                        <div
+                            class="star-item"
+                            on:click={() => handleStarClick(star)}
                         >
-                            <span class="name">{star.proper}</span>
-                            <span class="info"
-                                >Mag: {star.mag} | Dist: {star.dist} pc | Con: {star.con}</span
+                            <div class="star-info">
+                                <span class="name">{star.proper}</span>
+                                <span class="info"
+                                    >Mag: {star.mag} | Dist: {star.dist} pc | Con:
+                                    {star.con}</span
+                                >
+                            </div>
+                            <button
+                                on:click={(event) => {
+                                    event.stopPropagation();
+                                    handleButtonClick(star.id);
+                                }}
+                                id={"button-" + star.id}
                             >
-                        </button>
+                                View More
+                            </button>
+                        </div>
                     </li>
                 {/each}
             </ul>
+            {#if hoveredStar}
+                <div
+                    class="tooltip"
+                    style="left: {mouseX + 10}px; top: {mouseY + 10}px;"
+                >
+                    {hoveredStar.proper}
+                </div>
+            {/if}
         </div>
     {:else}
         <p>Loading...</p>
@@ -270,7 +359,7 @@
     }
 
     .slider-container {
-        width: 70%; /* Reduziere die Breite des Schiebereglers */
+        width: 70%;
         margin: 0 auto;
         text-align: center;
         padding-bottom: 30px;
@@ -312,27 +401,18 @@
         margin: 10px 0;
     }
 
-    button {
-        width: 100%;
-        padding: 15px;
-        font-size: 16px;
-        font-weight: 500;
-        cursor: pointer;
-        background-color: #6f9ceb;
-        color: #f2fdff;
-        border: none;
-        border-radius: 5px;
+    .star-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        transition:
-            background-color 0.3s,
-            box-shadow 0.3s;
+        background-color: #6f9ceb;
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     }
 
-    button:hover {
-        background-color: #5177b9;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+    .star-info {
+        flex-grow: 1;
     }
 
     .name {
@@ -343,6 +423,61 @@
         font-weight: 400;
         font-size: 14px;
         color: #f2fdff;
+    }
+
+    button {
+        padding: 5px 10px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        background-color: #1e1e4a;
+        color: #f2fdff;
+        border: none;
+        border-radius: 5px;
+        transition:
+            background-color 0.3s,
+            box-shadow 0.3s;
+    }
+
+    button:hover {
+        background-color: #5177b9;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    .star-chart-container {
+        position: relative;
+        margin-top: 20px;
+        width: 100%;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .star-chart {
+        width: 100%;
+        height: 400px;
+        background-color: #151531;
+        border: 1px solid #6f9ceb;
+        border-radius: 8px;
+    }
+
+    .out-of-range {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: 151531;
+        font-size: 14px;
+    }
+
+    .tooltip {
+        position: absolute;
+        background-color: #151531;
+        color: #6f9ceb;
+        padding: 5px 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        pointer-events: none;
+        font-size: 14px;
     }
 
     .error {
