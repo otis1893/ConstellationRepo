@@ -12,8 +12,10 @@
     let mouseX = 0;
     let mouseY = 0;
     let selectedConstellation = writable("");
-    let sliderValue = writable(0);
+    let sliderValue = writable(1); // Initial value set to 1 (maximum)
     let starOutOfRange = writable(false);
+    let searchQuery = writable("");
+    let meteors = writable([]);
 
     const constellationNames = {
         And: "Andromeda",
@@ -106,6 +108,15 @@
         Vul: "Vulpecula",
     };
 
+    const constellationLines = {
+        And: [
+            // Example format: [[star1, star2], [star2, star3], ...]
+            ["star1", "star2"],
+            ["star2", "star3"],
+        ],
+        // Add other constellations here...
+    };
+
     onMount(async () => {
         try {
             const response = await axios.get("/data/stardata.json");
@@ -126,17 +137,46 @@
             constellationCounts = Array.from(constellationMap.entries()).sort(
                 (a, b) => b[1] - a[1],
             );
+
+            startMeteorShower();
         } catch (err) {
             console.error("Error fetching data:", err);
             error = err.message;
         }
     });
 
+    function startMeteorShower() {
+        setInterval(() => {
+            let newMeteor = {
+                id: Math.random(),
+                x: Math.random() * 80,
+                y: Math.random() * 80,
+                length: Math.random() * 10 + 5,
+                duration: Math.random() * 2 + 1,
+            };
+            meteors.update((m) => {
+                m.push(newMeteor);
+                return m;
+            });
+            setTimeout(() => {
+                meteors.update((m) =>
+                    m.filter((meteor) => meteor.id !== newMeteor.id),
+                );
+            }, newMeteor.duration * 1000);
+        }, 3000); // Adjust the interval for how often meteors appear
+    }
+
     function handleButtonClick(id) {
         push(`/detail/${id}`);
     }
 
     function handleStarClick(star) {
+        selectedStar = star;
+        checkStarPosition();
+        push(`/detail/${star.id}`); // Navigate to detail page
+    }
+
+    function handleStarSelect(star) {
         selectedStar = star;
         checkStarPosition();
     }
@@ -199,6 +239,12 @@
         ),
         targetMagnitude,
     );
+
+    $: searchedStars = $searchQuery
+        ? sortedStars.filter((star) =>
+              star.proper.toLowerCase().includes($searchQuery.toLowerCase()),
+          )
+        : sortedStars;
 </script>
 
 <main on:mousemove={handleMouseMove}>
@@ -206,7 +252,7 @@
         <p class="error">{error}</p>
     {:else if data.length > 0}
         <div class="container">
-            <h1>Star Data</h1>
+            <h1>Astral Map Explorer</h1>
             <label for="constellation">Filter by Constellation:</label>
             <select
                 id="constellation"
@@ -239,18 +285,56 @@
             </div>
             <div class="star-chart-container">
                 <svg class="star-chart" viewBox="0 0 80 80">
-                    {#each sortedStars as star}
+                    {#each searchedStars as star}
                         <circle
                             cx={calculatePosition(star.ra, star.dec).x}
                             cy={calculatePosition(star.ra, star.dec).y}
-                            r="0.5"
+                            r={selectedStar && selectedStar.id === star.id
+                                ? "1.5"
+                                : "0.5"}
                             fill={selectedStar && selectedStar.id === star.id
-                                ? "yellow"
+                                ? "orange"
                                 : "white"}
                             on:click={() => handleStarClick(star)}
                             on:mouseover={(event) =>
                                 handleMouseOver(event, star)}
                             on:mouseout={handleMouseOut}
+                        />
+                    {/each}
+                    {#if $selectedConstellation && constellationLines[$selectedConstellation]}
+                        {#each constellationLines[$selectedConstellation] as [star1, star2]}
+                            <line
+                                x1={calculatePosition(
+                                    data.find((s) => s.proper === star1).ra,
+                                    data.find((s) => s.proper === star1).dec,
+                                ).x}
+                                y1={calculatePosition(
+                                    data.find((s) => s.proper === star1).ra,
+                                    data.find((s) => s.proper === star1).dec,
+                                ).y}
+                                x2={calculatePosition(
+                                    data.find((s) => s.proper === star2).ra,
+                                    data.find((s) => s.proper === star2).dec,
+                                ).x}
+                                y2={calculatePosition(
+                                    data.find((s) => s.proper === star2).ra,
+                                    data.find((s) => s.proper === star2).dec,
+                                ).y}
+                                stroke="white"
+                                stroke-width="0.2"
+                            />
+                        {/each}
+                    {/if}
+                    {#each $meteors as meteor}
+                        <line
+                            x1={meteor.x}
+                            y1={meteor.y}
+                            x2={meteor.x + meteor.length}
+                            y2={meteor.y + meteor.length}
+                            stroke="white"
+                            stroke-width="0.5"
+                            class="meteor"
+                            style="animation-duration: {meteor.duration}s"
                         />
                     {/each}
                 </svg>
@@ -260,15 +344,22 @@
                     </p>
                 {/if}
             </div>
+            <div class="search-container">
+                <input
+                    type="text"
+                    placeholder="Search stars by name..."
+                    bind:value={$searchQuery}
+                />
+            </div>
             <ul>
-                {#each sortedStars.slice(0, 1000) as star (star.id)}
+                {#each searchedStars.slice(0, 1000) as star (star.id)}
                     <li>
                         <div
                             class="star-item"
-                            on:click={() => handleStarClick(star)}
+                            on:click={() => handleStarSelect(star)}
                         >
+                            <span class="name">{star.proper}</span>
                             <div class="star-info">
-                                <span class="name">{star.proper}</span>
                                 <span class="info"
                                     >Mag: {star.mag} | Dist: {star.dist} pc | Con:
                                     {star.con}</span
@@ -311,6 +402,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+        letter-spacing: 0.2px;
     }
 
     .container {
@@ -327,6 +419,34 @@
         font-size: 24px;
         text-align: center;
         color: #f2fdff;
+    }
+
+    .search-container {
+        width: 800px;
+        position: relative;
+        margin-bottom: 20px;
+    }
+
+    input[type="text"] {
+        width: calc(100% - 24px);
+        padding: 10px;
+        border-radius: 5px;
+        border: 2px solid #6f9ceb;
+        background-color: #151531;
+        color: white;
+        outline: none;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        transition:
+            background-color 0.3s,
+            box-shadow 0.3s;
+    }
+
+    input[type="text"]::placeholder {
+        color: #6f9ceb;
+    }
+
+    input[type="text"]:hover {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
     }
 
     label {
@@ -351,6 +471,9 @@
         transition:
             background-color 0.3s,
             box-shadow 0.3s;
+        appearance: none;
+        background-repeat: no-repeat;
+        background-position: calc(100% - 30px) center;
     }
 
     select:hover {
@@ -359,7 +482,7 @@
     }
 
     .slider-container {
-        width: 70%;
+        width: 100%;
         margin: 0 auto;
         text-align: center;
         padding-bottom: 30px;
@@ -367,7 +490,7 @@
     }
 
     input[type="range"] {
-        width: 100%;
+        width: calc(100% - 20px);
         padding: 10px;
         margin-bottom: 10px;
         border-radius: 5px;
@@ -378,6 +501,23 @@
         transition:
             background-color 0.3s,
             box-shadow 0.3s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        background-color: #151531;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        background-color: #151531;
+        border-radius: 50%;
+        cursor: pointer;
     }
 
     input[type="range"]:hover {
@@ -412,17 +552,23 @@
     }
 
     .star-info {
+        display: flex;
+        justify-content: flex-end;
+        margin-right: 10px;
         flex-grow: 1;
     }
 
     .name {
         font-weight: 700;
+        margin-right: 20px;
     }
 
     .info {
         font-weight: 400;
         font-size: 14px;
         color: #f2fdff;
+        margin-left: 10px;
+        text-align: right;
     }
 
     button {
@@ -451,6 +597,7 @@
         max-width: 400px;
         margin-left: auto;
         margin-right: auto;
+        margin-bottom: 20px;
     }
 
     .star-chart {
@@ -461,11 +608,25 @@
         border-radius: 8px;
     }
 
+    .meteor {
+        animation: moveMeteor linear forwards;
+    }
+
+    @keyframes moveMeteor {
+        from {
+            opacity: 1;
+        }
+        to {
+            opacity: 0;
+            transform: translate(50px, 50px);
+        }
+    }
+
     .out-of-range {
         position: absolute;
         top: 10px;
         left: 10px;
-        color: 151531;
+        color: #151531;
         font-size: 14px;
     }
 
