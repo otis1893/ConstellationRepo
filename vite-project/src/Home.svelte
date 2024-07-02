@@ -133,7 +133,6 @@
                 }
             });
 
-            // Konstellationen nach Anzahl der Sterne sortieren
             constellationCounts = Array.from(constellationMap.entries()).sort(
                 (a, b) => b[1] - a[1],
             );
@@ -163,7 +162,7 @@
                     m.filter((meteor) => meteor.id !== newMeteor.id),
                 );
             }, newMeteor.duration * 1000);
-        }, 3000); // Adjust the interval for how often meteors appear
+        }, 3000);
     }
 
     function handleButtonClick(id) {
@@ -173,7 +172,7 @@
     function handleStarClick(star) {
         selectedStar = star;
         checkStarPosition();
-        push(`/detail/${star.id}`); // Navigate to detail page
+        push(`/detail/${star.id}`);
     }
 
     function handleStarSelect(star) {
@@ -197,7 +196,7 @@
     }
 
     function checkStarPosition() {
-        const chartSize = 70; // Adjusted chart size to leave padding around edges
+        const chartSize = 70;
         const position = calculatePosition(selectedStar.ra, selectedStar.dec);
         if (
             position.x < 0 ||
@@ -220,8 +219,8 @@
     }
 
     function calculatePosition(ra, dec) {
-        const x = (ra / 24) * 70 + 5; // Adding 5 units padding
-        const y = ((dec + 90) * 70) / 180 + 5; // Adding 5 units padding
+        const x = (ra / 24) * 70 + 5;
+        const y = ((dec + 90) * 70) / 180 + 5;
         return { x, y };
     }
 
@@ -230,7 +229,6 @@
             ? data
             : data.filter((star) => star.con === $selectedConstellation);
 
-    // Setze den Zielwert der Helligkeit basierend auf dem Schiebereglerwert (linear)
     $: targetMagnitude = 0 + (4 - 0) * $sliderValue;
 
     $: sortedStars = sortStarsByMagnitude(
@@ -290,10 +288,10 @@
                             cx={calculatePosition(star.ra, star.dec).x}
                             cy={calculatePosition(star.ra, star.dec).y}
                             r={selectedStar && selectedStar.id === star.id
-                                ? "1.5"
+                                ? "1"
                                 : "0.5"}
                             fill={selectedStar && selectedStar.id === star.id
-                                ? "orange"
+                                ? "#FFE135"
                                 : "white"}
                             on:click={() => handleStarClick(star)}
                             on:mouseover={(event) =>
@@ -451,7 +449,6 @@
 
     label {
         font-size: 16px;
-        margin-bottom: 10px;
         display: block;
     }
 
@@ -485,8 +482,8 @@
         width: 100%;
         margin: 0 auto;
         text-align: center;
-        padding-bottom: 30px;
-        padding-top: 30px;
+        padding-bottom: 20px;
+        padding-top: none;
     }
 
     input[type="range"] {

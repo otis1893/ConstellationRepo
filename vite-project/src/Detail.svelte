@@ -10,9 +10,9 @@
     let synopsis = null;
     let imageUrl = null;
     let earthOrbitAngle = 0;
-    const AU = 10; // Maßstab für die Umlaufbahn der Erde zur Sonne
+    const AU = 10;
     const daysInYear = 365.25;
-    const degreesPerDay = 360 / daysInYear; // Erdumlaufgeschwindigkeit in Grad pro Tag
+    const degreesPerDay = 360 / daysInYear;
 
     onMount(async () => {
         const hashFragment = window.location.hash.substring(1);
@@ -33,13 +33,11 @@
                 imageUrl = await fetchStarImage(star);
             }
 
-            // Position der Sonne finden
             const sunData = jsonData.find((s) => s.proper === "Sol");
             if (sunData) {
                 sunPosition = calculatePosition(sunData.ra, sunData.dec);
             }
 
-            // Start the animation
             animateEarth();
         } catch (err) {
             console.error("Error fetching data:", err);
@@ -60,7 +58,7 @@
 
         try {
             const response = await axios.get(wikiApiUrl);
-            return response.data.extract; // The synopsis of the article
+            return response.data.extract;
         } catch (error) {
             console.error("Error fetching Wikipedia synopsis:", error);
             return null;
@@ -76,7 +74,7 @@
 
         try {
             const response = await axios.get(wikiApiUrl);
-            return response.data.thumbnail?.source || null; // The image URL of the article
+            return response.data.thumbnail?.source || null;
         } catch (error) {
             console.error("Error fetching Wikipedia image:", error);
             return null;
@@ -90,15 +88,15 @@
     }
 
     let starPosition = { x: 0, y: 0 };
-    let sunPosition = { x: 50, y: 50 }; // Initial center of the chart
-    const earthOrbitRadius = AU; // 1 AU is the average distance from Earth to the Sun
+    let sunPosition = { x: 50, y: 50 };
+    const earthOrbitRadius = AU;
 
     $: if (star) {
         starPosition = calculatePosition(star.ra, star.dec);
     }
 
     function animateEarth() {
-        earthOrbitAngle = (earthOrbitAngle + degreesPerDay / 365.25) % 360; // Realistic speed
+        earthOrbitAngle = (earthOrbitAngle + degreesPerDay / 365.25) % 360;
         tick().then(() => requestAnimationFrame(animateEarth));
     }
 
@@ -260,11 +258,13 @@
     }
 
     .star-chart {
-        width: 100%;
+        width: 80%;
+        max-width: 400px;
         height: 300px;
         background: #0d1b2a;
         border: 1px solid #6f9ceb;
         border-radius: 8px;
         position: relative;
+        margin: 0 auto;
     }
 </style>
