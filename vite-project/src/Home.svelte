@@ -12,7 +12,7 @@
     let mouseX = 0;
     let mouseY = 0;
     let selectedConstellation = writable("");
-    let sliderValue = writable(1); // Initial value set to 1 (maximum)
+    let sliderValue = writable(1);
     let starOutOfRange = writable(false);
     let searchQuery = writable("");
     let meteors = writable([]);
@@ -110,11 +110,9 @@
 
     const constellationLines = {
         And: [
-            // Example format: [[star1, star2], [star2, star3], ...]
             ["star1", "star2"],
             ["star2", "star3"],
         ],
-        // Add other constellations here...
     };
 
     onMount(async () => {
